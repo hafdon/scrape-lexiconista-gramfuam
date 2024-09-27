@@ -5,6 +5,7 @@ import urllib.parse
 import pygame
 import os
 import io
+import random  # Import the random module for shuffling
 
 class AudioQuizApp:
     def __init__(self, root):
@@ -15,6 +16,8 @@ class AudioQuizApp:
         self.current_index = 0
         self.correct_text = ""
 
+        self.selected_dialect = tk.StringVar(value='CanM')  # Default dialect is CanM
+
         # Initialize Pygame mixer for audio playback
         pygame.mixer.init()
 
@@ -22,6 +25,15 @@ class AudioQuizApp:
         self.create_widgets()
 
     def create_widgets(self):
+        # Dialect Selection
+        dialect_frame = tk.LabelFrame(self.root, text="Select Dialect")
+        dialect_frame.pack(pady=10)
+
+        dialects = [("Munster (CanM)", "CanM"), ("Ulster (CanU)", "CanU"), ("Connacht (CanC)", "CanC")]
+        for text, value in dialects:
+            radio = tk.Radiobutton(dialect_frame, text=text, variable=self.selected_dialect, value=value)
+            radio.pack(anchor=tk.W)
+
         # Open File Button
         self.open_button = tk.Button(self.root, text="Open URL File", command=self.open_file)
         self.open_button.pack(pady=10)
@@ -52,15 +64,26 @@ class AudioQuizApp:
         if file_path:
             # Read the URLs from the file
             with open(file_path, 'r', encoding='utf-8') as file:
-                self.url_list = [line.strip() for line in file if line.strip()]
-            if self.url_list:
+                all_urls = [line.strip() for line in file if line.strip()]
+            if all_urls:
+                # Filter URLs based on selected dialect
+                dialect_code = self.selected_dialect.get()
+                self.url_list = [url for url in all_urls if f'/{dialect_code}-verb/' in url]
+
+                if not self.url_list:
+                    messagebox.showerror("Error", f"No URLs found for the selected dialect '{dialect_code}'.")
+                    return
+
+                # Shuffle the URL list
+                random.shuffle(self.url_list)
+
                 self.current_index = 0
                 self.play_button.config(state=tk.NORMAL)
                 self.check_button.config(state=tk.NORMAL)
                 self.next_button.config(state=tk.DISABLED)
                 self.result_label.config(text="")
                 self.guess_entry.delete(0, tk.END)
-                messagebox.showinfo("File Loaded", f"Loaded {len(self.url_list)} URLs.")
+                messagebox.showinfo("File Loaded", f"Loaded {len(self.url_list)} URLs for dialect '{dialect_code}'.")
             else:
                 messagebox.showerror("Error", "The file is empty.")
         else:

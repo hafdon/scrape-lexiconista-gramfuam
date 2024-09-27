@@ -1,2 +1,10 @@
+.DS_Store
+
+.idea
 .venv
 audio_files
+
+main.py
+play_audio.py
+scrape_audio.py
+scrape_find_gramplay.py

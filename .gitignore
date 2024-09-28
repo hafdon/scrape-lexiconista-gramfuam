@@ -5,14 +5,21 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Ignore log files
+*.log
+
+# Ignore IO files
+*_urls.txt
+
+# Ignore IDE files
 .idea
 .venv
-audio_files
 
-main.py
-play_audio.py
+audio_files
+archive
+
+utils/play_audio.py
 scrape_audio.py
 scrape_find_gramplay.py
-process.log
 
-*_urls.txt
+

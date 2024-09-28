@@ -55,6 +55,26 @@ The Audio Quiz App is a Python-based application that allows users to test their
 
 6. Click "Next" to move to the next audio file.
 
+## Help
+   ```commandline
+   usage: check_gramplay_optimized.py [-h] [--concurrent-requests CONCURRENT_REQUESTS]
+                                      [--batch-write-interval BATCH_WRITE_INTERVAL]
+                                      [--retries RETRIES] [--backoff-factor BACKOFF_FACTOR]
+   
+   Process URLs with optional configuration.
+   
+   optional arguments:
+     -h, --help            show this help message and exit
+     --concurrent-requests CONCURRENT_REQUESTS
+                           Number of concurrent requests (default: 400)
+     --batch-write-interval BATCH_WRITE_INTERVAL
+                           Seconds between batch writes (default: 5)
+     --retries RETRIES     Number of retry attempts for failed requests (default: 3)
+     --backoff-factor BACKOFF_FACTOR
+                           Factor for exponential backoff (default: 12)
+   
+   ```
+
 ## File Format
 
 The URL file should be a plain text file (`.txt`) with each line containing a single URL. Example:

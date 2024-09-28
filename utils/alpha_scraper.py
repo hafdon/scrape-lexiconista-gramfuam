@@ -34,7 +34,7 @@ class AsyncScraper:
 
         # Setup logging
         logging.basicConfig(
-            filename='scraper.log',
+            filename='../logs/scraper.log',
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s'
         )

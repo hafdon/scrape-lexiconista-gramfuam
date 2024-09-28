@@ -30,7 +30,7 @@ for link in soup.find_all('a', href=True):
         audio_links.append(url + link['href'])
 
 # Create a folder to save audio files
-os.makedirs('audio_files', exist_ok=True)
+os.makedirs('../audio_files', exist_ok=True)
 
 # Download and save the audio files
 for audio_link in audio_links:

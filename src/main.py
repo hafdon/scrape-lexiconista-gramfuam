@@ -6,7 +6,7 @@ import os
 import logging
 from tqdm.asyncio import tqdm
 
-from check_gramplay_optimized import is_valid_url, write_batches, check_gramplay
+from utils.check_gramplay_optimized import is_valid_url, write_batches, check_gramplay
 from config import INPUT_FILE, FAILED_FILE, OUTPUT_FILE, COMPLETED_FILE
 
 

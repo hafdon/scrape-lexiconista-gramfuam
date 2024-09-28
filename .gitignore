@@ -1,5 +1,10 @@
 .DS_Store
 
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
 .idea
 .venv
 audio_files

@@ -14,4 +14,11 @@ INPUT_FILE = os.path.join(INPUT_DIR, 'output_urls.txt')
 FAILED_FILE = os.path.join(OUTPUT_DIR, 'failed_urls.txt')
 MATCHED_FILE = os.path.join(OUTPUT_DIR, 'matched_urls.txt')
 INVALID_FILE = os.path.join(OUTPUT_DIR, 'invalid_urls.txt')
+COMPLETED_FILE = os.path.join(OUTPUT_DIR, 'completed_urls.txt')
 LOG_FILE = os.path.join(LOG_DIR, 'process.log')
+
+# Configuration Constants
+CONCURRENT_REQUESTS = 1000  # Adjust based on your system and target servers
+BATCH_WRITE_INTERVAL = 5  # Seconds between batch writes
+RETRIES = 3  # Number of retry attempts for failed requests
+BACKOFF_FACTOR = .5  # Factor for exponential backoff

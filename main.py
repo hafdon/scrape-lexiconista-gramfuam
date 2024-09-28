@@ -6,12 +6,27 @@ import os
 import logging
 from tqdm.asyncio import tqdm
 
-from utils.check_gramplay_optimized import is_valid_url, write_batches, check_gramplay
-from config import INPUT_FILE, FAILED_FILE, OUTPUT_FILE, COMPLETED_FILE
+from utils.url_util import is_valid_url
+from utils.check_gramplay_optimized import check_gramplay
+from utils.write_util import write_batches
+from config.config import (INPUT_FILE, FAILED_FILE, MATCHED_FILE, COMPLETED_FILE,
+                           CONCURRENT_REQUESTS, BATCH_WRITE_INTERVAL, RETRIES, BACKOFF_FACTOR)
 
+from utils.logging_util import create_logger
+
+logger = create_logger()
+
+from dataclasses import dataclass
+
+@dataclass
+class Args:
+    concurrent_requests: int
+    batch_write_interval: int
+    retries: int
+    backoff_factor: float
 
 # Argument parser to handle optional command-line arguments
-def parse_arguments():
+def parse_arguments() -> Args:
     parser = argparse.ArgumentParser(description="Process URLs with optional configuration.")
 
     parser.add_argument(
@@ -31,7 +46,12 @@ def parse_arguments():
         help=f"Factor for exponential backoff (default: {BACKOFF_FACTOR})"
     )
 
-    return parser.parse_args()
+    # Parse arguments into a Namespace object
+    parsed_args = parser.parse_args()
+
+    # Convert Namespace to dataclass
+    return Args(**vars(parsed_args))
+
 
 
 async def process_urls():
@@ -66,6 +86,7 @@ async def process_urls():
         # Check again for failed URLs and continue the loop if they exist
 
 
+
 async def main():
     """
     The main coroutine that orchestrates reading URLs, checking them,
@@ -75,18 +96,13 @@ async def main():
     # Parse command-line arguments
     args = parse_arguments()
 
-    # Overwrite the configuration constants with the values from the arguments
-    global CONCURRENT_REQUESTS, BATCH_WRITE_INTERVAL, RETRIES, BACKOFF_FACTOR
-    CONCURRENT_REQUESTS = args.concurrent_requests
-    BATCH_WRITE_INTERVAL = args.batch_write_interval
-    RETRIES = args.retries
-    BACKOFF_FACTOR = args.backoff_factor
+    # Define the width for the first column (label)
+    column_width = 20
 
-    # Log the values being used
-    print(f"CONCURRENT_REQUESTS: {CONCURRENT_REQUESTS}")
-    print(f"BATCH_WRITE_INTERVAL: {BATCH_WRITE_INTERVAL}")
-    print(f"RETRIES: {RETRIES}")
-    print(f"BACKOFF_FACTOR: {BACKOFF_FACTOR}")
+    print(f"{'CONCURRENT_REQUESTS:':<{column_width}} {args.concurrent_requests}")
+    print(f"{'BATCH_WRITE_INTERVAL:':<{column_width}} {args.batch_write_interval}")
+    print(f"{'RETRIES:':<{column_width}} {args.retries}")
+    print(f"{'BACKOFF_FACTOR:':<{column_width}} {args.backoff_factor}")
 
     # Check if the input file exists
     if not os.path.isfile(INPUT_FILE):
@@ -114,7 +130,7 @@ async def main():
     logging.info(f"Total URLs to process: {len(urls)}")
 
     # Initialize concurrency controls
-    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+    semaphore = asyncio.Semaphore(args.concurrent_requests)
     lock = asyncio.Lock()
     fail_lock = asyncio.Lock()
     completed_lock = asyncio.Lock()
@@ -136,19 +152,21 @@ async def main():
             completed_urls.update(line.strip() for line in lines if line.strip())
 
     # Open the output file in write mode (append)
-    async with aiofiles.open(OUTPUT_FILE, 'a', encoding='utf-8') as file_handle:
+    async with aiofiles.open(MATCHED_FILE, 'a', encoding='utf-8') as file_handle:
         # Start the batch writer task
-        writer_task = asyncio.create_task(write_batches(file_handle, matched_urls, lock))
+        writer_task = asyncio.create_task(write_batches(file_handle, matched_urls, lock, args.batch_write_interval))
 
         # Initialize the HTTP client with HTTP/2 support and high connection limits
-        async with httpx.AsyncClient(http2=True, limits=httpx.Limits(max_connections=CONCURRENT_REQUESTS)) as client:
+        async with httpx.AsyncClient(http2=True, limits=httpx.Limits(max_connections=args.concurrent_requests)) as client:
             # Create tasks for checking each URL
             tasks = [
                 asyncio.create_task(
                     check_gramplay(client, url, semaphore,
                                    matched_urls, lock,
                                    failed_urls, fail_lock,
-                                   completed_urls, completed_lock))
+                                   completed_urls, completed_lock,
+                                   retries=args.retries,
+                                   backoff_factor=args.backoff_factor))
                 for url in urls
             ]
 
@@ -157,7 +175,7 @@ async def main():
                 await f_task
 
         # Allow some time for the last batch to be written
-        await asyncio.sleep(BATCH_WRITE_INTERVAL + 1)
+        await asyncio.sleep(args.batch_write_interval + 1)
         # Cancel the writer task as it's an infinite loop
         writer_task.cancel()
         try:
@@ -186,7 +204,7 @@ async def main():
             await completed_file.write('\n'.join(sorted(completed_urls)) + '\n')
         logging.info(f"Completed URLs have been written to '{COMPLETED_FILE}'.")
 
-    print(f"\nProcessing complete. Matched URLs have been written to '{OUTPUT_FILE}'.")
+    print(f"\nProcessing complete. Matched URLs have been written to '{MATCHED_FILE}'.")
     print(f"Check 'process.log' for detailed logs.")
 
 

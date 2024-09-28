@@ -1,4 +1,4 @@
-from config import LOG_FILE
+from config.config import LOG_FILE
 
 import logging
 

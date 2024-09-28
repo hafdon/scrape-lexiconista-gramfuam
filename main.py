@@ -1,4 +1,3 @@
-
 import argparse
 import asyncio
 import httpx
@@ -7,8 +6,9 @@ import os
 import logging
 from tqdm.asyncio import tqdm
 
-from check_gramplay_optimized import is_valid_url, write_batches, check_gramplay, process_urls
-from config import INPUT_FILE, FAILED_FILE, OUTPUT_FILE
+from check_gramplay_optimized import is_valid_url, write_batches, check_gramplay
+from config import INPUT_FILE, FAILED_FILE, OUTPUT_FILE, COMPLETED_FILE
+
 
 # Argument parser to handle optional command-line arguments
 def parse_arguments():
@@ -32,6 +32,38 @@ def parse_arguments():
     )
 
     return parser.parse_args()
+
+
+async def process_urls():
+    """
+    Process URLs from output_urls.txt and failed_urls.txt until no more failed URLs remain.
+    """
+    # Loop until there are no more failed URLs
+    while True:
+        # Check if failed_urls.txt exists and has contents
+        if os.path.isfile(FAILED_FILE):
+            async with aiofiles.open(FAILED_FILE, 'r', encoding='utf-8') as f:
+                failed_urls = [line.strip() for line in await f.readlines() if line.strip()]
+        else:
+            failed_urls = []
+
+        if not failed_urls:
+            logging.info("No failed URLs left to process. Exiting.")
+            print("No failed URLs left to process. Exiting.")
+            break
+
+        # Move failed URLs to output_urls.txt
+        async with aiofiles.open(INPUT_FILE, 'w', encoding='utf-8') as out_f:
+            await out_f.write('\n'.join(failed_urls) + '\n')
+
+        # Clear failed_urls.txt
+        async with aiofiles.open(FAILED_FILE, 'w', encoding='utf-8') as f:
+            await f.write('')
+
+        # Now run the processing logic for these URLs
+        await main()
+
+        # Check again for failed URLs and continue the loop if they exist
 
 
 async def main():
@@ -88,7 +120,7 @@ async def main():
     completed_lock = asyncio.Lock()
     matched_urls = []
 
-    # Read existing failed URLs from FAILED_FILE' if it exists
+    # Read existing failed URLs from 'FAILED_FILE' if it exists
     failed_urls = set()
     if os.path.isfile(FAILED_FILE):
         async with aiofiles.open(FAILED_FILE, 'r', encoding='utf-8') as f:
@@ -97,10 +129,9 @@ async def main():
 
     failed_urls_start_len = len(failed_urls)
 
-    completed_urls_filename = "completed_urls.txt"
     completed_urls = set()
-    if os.path.isfile(completed_urls_filename):
-        async with aiofiles.open(completed_urls_filename, 'r', encoding='utf-8') as f:
+    if os.path.isfile(COMPLETED_FILE):
+        async with aiofiles.open(COMPLETED_FILE, 'r', encoding='utf-8') as f:
             lines = await f.readlines()
             completed_urls.update(line.strip() for line in lines if line.strip())
 
@@ -151,9 +182,9 @@ async def main():
 
     if completed_urls:
         # Write completed URLs to a separate file
-        async with aiofiles.open(completed_urls_filename, 'w', encoding='utf-8') as completed_file:
+        async with aiofiles.open(COMPLETED_FILE, 'w', encoding='utf-8') as completed_file:
             await completed_file.write('\n'.join(sorted(completed_urls)) + '\n')
-        logging.info(f"Completed URLs have been written to '{completed_urls_filename}'.")
+        logging.info(f"Completed URLs have been written to '{COMPLETED_FILE}'.")
 
     print(f"\nProcessing complete. Matched URLs have been written to '{OUTPUT_FILE}'.")
     print(f"Check 'process.log' for detailed logs.")
